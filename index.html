@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Express - Controle de Pedidos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        
+        <header class="header">
+            <h1>🍕 Delivery Express</h1>
+            <span class="ajudante">📋 Sistema de Controle de Entregas</span>
+        </header>
+
+        
+        <section class="resumo">
+            <div class="card-resumo">
+                <h3>📦 Total de Pedidos</h3>
+                <p class="numero" id="totalPedidos">0</p>
+            </div>
+            <div class="card-resumo">
+                <h3>✅ Entregues</h3>
+                <p class="numero" id="totalEntregues">0</p>
+            </div>
+            <div class="card-resumo">
+                <h3>⏳ Em Aberto</h3>
+                <p class="numero" id="totalAberto">0</p>
+            </div>
+        </section>
+
+        
+        <div class="main-grid">
+            
+            <section class="cadastro">
+                <h2>➕ Novo Pedido</h2>
+                <form id="formPedido">
+                    <input type="text" id="nome" placeholder="Nome do cliente" required>
+                    <input type="text" id="endereco" placeholder="Endereço de entrega" required>
+                    <input type="tel" id="telefone" placeholder="Telefone" required>
+                    <button type="submit" class="btn-adicionar">➕ Adicionar Pedido</button>
+                </form>
+            </section>
+
+            <!-- LADO DIREITO: LISTA DE PEDIDOS -->
+            <section class="lista-pedidos">
+                <h2>📋 Lista de Pedidos</h2>
+                <div id="listaContainer">
+                    <table id="tabelaPedidos">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cliente</th>
+                                <th>Endereço</th>
+                                <th>Telefone</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabela">
+                            <!-- Os pedidos vão aparecer aqui -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="acoes-gerais">
+                    <button id="btnLimparTudo" class="btn-limpar">🗑️ Limpar todos os pedidos</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        let pedidos = [];
+
+        function carregarPedidos() {
+            const salvos = localStorage.getItem('delivery_pedidos');
+            if (salvos) {
+                pedidos = JSON.parse(salvos);
+            }
+            atualizarTabela();
+            atualizarResumo();
+        }
+
+        function salvarPedidos() {
+            localStorage.setItem('delivery_pedidos', JSON.stringify(pedidos));
+        }
+
+        function atualizarResumo() {
+            const total = pedidos.length;
+            const entregues = pedidos.filter(p => p.status === 'Entregue').length;
+            const aberto = pedidos.filter(p => p.status !== 'Entregue').length;
+            
+            document.getElementById('totalPedidos').innerText = total;
+            document.getElementById('totalEntregues').innerText = entregues;
+            document.getElementById('totalAberto').innerText = aberto;
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'Preparando') {
+                return '<span class="badge-preparando">🔧 Preparando</span>';
+            } else if (status === 'Saiu') {
+                return '<span class="badge-saiu">🛵 Saiu</span>';
+            } else {
+                return '<span class="badge-entregue">✅ Entregue</span>';
+            }
+        }
+
+        function atualizarTabela() {
+            const tbody = document.getElementById('corpoTabela');
+            tbody.innerHTML = '';
+            
+            pedidos.forEach((pedido, index) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${pedido.nome}</td>
+                    <td>${pedido.endereco}</td>
+                    <td>${pedido.telefone}</td>
+                    <td class="status-cell">${getStatusBadge(pedido.status)}</td>
+                    <td class="acoes-cell">
+                        <select class="status-select" data-index="${index}">
+                            <option value="Preparando" ${pedido.status === 'Preparando' ? 'selected' : ''}>🔧 Preparando</option>
+                            <option value="Saiu" ${pedido.status === 'Saiu' ? 'selected' : ''}>🛵 Saiu</option>
+                            <option value="Entregue" ${pedido.status === 'Entregue' ? 'selected' : ''}>✅ Entregue</option>
+                        </select>
+                        <button class="btn-remover" data-index="${index}">🗑️</button>
+                    </td>
+                `;
+            });
+            
+            document.querySelectorAll('.status-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const index = e.target.getAttribute('data-index');
+                    pedidos[index].status = e.target.value;
+                    salvarPedidos();
+                    atualizarTabela();
+                    atualizarResumo();
+                });
+            });
+            
+            document.querySelectorAll('.btn-remover').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = btn.getAttribute('data-index');
+                    pedidos.splice(index, 1);
+                    salvarPedidos();
+                    atualizarTabela();
+                    atualizarResumo();
+                });
+            });
+        }
+
+        function adicionarPedido(nome, endereco, telefone) {
+            const novoPedido = {
+                nome: nome,
+                endereco: endereco,
+                telefone: telefone,
+                status: 'Preparando'
+            };
+            pedidos.push(novoPedido);
+            salvarPedidos();
+            atualizarTabela();
+            atualizarResumo();
+        }
+
+        document.getElementById('formPedido').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const nome = document.getElementById('nome').value.trim();
+            const endereco = document.getElementById('endereco').value.trim();
+            const telefone = document.getElementById('telefone').value.trim();
+            
+            if (nome === '' || endereco === '' || telefone === '') {
+                alert('⚠️ Por favor, preencha todos os campos!');
+                return;
+            }
+            
+            adicionarPedido(nome, endereco, telefone);
+            document.getElementById('formPedido').reset();
+        });
+
+        document.getElementById('btnLimparTudo').addEventListener('click', () => {
+            if (confirm('⚠️ Tem certeza que deseja limpar TODOS os pedidos?')) {
+                pedidos = [];
+                salvarPedidos();
+                atualizarTabela();
+                atualizarResumo();
+            }
+        });
+
+        carregarPedidos();
+    </script>
+
+</body>
+
